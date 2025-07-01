@@ -5,8 +5,9 @@ import (
 	"net/url"
 
 	"github.com/avast/retry-go"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
-	"github.com/salivare/pgx/sqlx/v5/config"
+	"github.com/salivare/pgx/config"
 )
 
 type Option func(*config.DBConfig)
