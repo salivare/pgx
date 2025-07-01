@@ -1,6 +1,6 @@
 package sqlx
 
-import "github.com/salivare/pgx/sqlx/v5/config"
+import "github.com/salivare/pgx/config"
 
 func WithDSN(dsn string) Option {
 	return func(c *config.DBConfig) {
