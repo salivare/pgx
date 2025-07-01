@@ -1,0 +1,18 @@
+database:
+  driver: pgx
+
+  host: localhost
+  port: 5432
+  user: myuser
+  password: mypass
+  name: mydb
+  sslmode: disable
+
+  pool:
+    maxOpenConns: 10
+    maxIdleConns: 5
+
+  retry:
+    maxAttempts: 10
+    delay: 2s
+    maxDelay: 10s
