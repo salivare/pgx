@@ -36,7 +36,22 @@ type Config struct {
 func LoadConfig() (*DBConfig, error) {
 	path := os.Getenv("CONFIG_PATH")
 	if path == "" {
-		return nil, fmt.Errorf("no config path provided: pass as argument or set CONFIG_PATH")
+		if env := os.Getenv("CONFIG_PATH"); env != "" {
+			path = env
+		} else {
+			path = "./config/dbconfig.yaml"
+		}
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("config file not found: %s", path)
+		}
+		return nil, fmt.Errorf("error accessing config file %s: %w", path, err)
+	}
+	if info.IsDir() {
+		return nil, fmt.Errorf("config path is a directory, not a file: %s", path)
 	}
 
 	data, err := os.ReadFile(path)

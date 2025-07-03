@@ -52,5 +52,6 @@ func Connect(opts ...Option) (*sqlx.DB, error) {
 
 	db.SetMaxOpenConns(cfg.Pool.MaxOpenConns)
 	db.SetMaxIdleConns(cfg.Pool.MaxIdleConns)
+
 	return db, nil
 }
