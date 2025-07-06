@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/goccy/go-yaml"
@@ -33,46 +34,59 @@ type Config struct {
 	Database DBConfig `yaml:"database"`
 }
 
+var (
+	cfgOnce sync.Once
+	cfgInst *DBConfig
+	cfgErr  error
+)
+
 func LoadConfig() (*DBConfig, error) {
-	path := os.Getenv("CONFIG_PATH")
-	if path == "" {
-		if env := os.Getenv("CONFIG_PATH"); env != "" {
-			path = env
-		} else {
-			path = "./config/dbconfig.yaml"
-		}
-	}
+	cfgOnce.Do(
+		func() {
+			path := os.Getenv("CONFIG_PATH")
+			if path == "" {
+				path = "./config/dbconfig.yaml"
+			}
 
-	info, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("config file not found: %s", path)
-		}
-		return nil, fmt.Errorf("error accessing config file %s: %w", path, err)
-	}
-	if info.IsDir() {
-		return nil, fmt.Errorf("config path is a directory, not a file: %s", path)
-	}
+			info, err := os.Stat(path)
+			if err != nil {
+				if os.IsNotExist(err) {
+					cfgErr = fmt.Errorf("config file not found: %s", path)
+				} else {
+					cfgErr = fmt.Errorf("error accessing config file %s: %w", path, err)
+				}
+				return
+			}
+			if info.IsDir() {
+				cfgErr = fmt.Errorf("config path is a directory, not a file: %s", path)
+				return
+			}
 
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read config file: %w", err)
-	}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				cfgErr = fmt.Errorf("read config file: %w", err)
+				return
+			}
+			var tmp Config
+			if err := yaml.Unmarshal(data, &tmp); err != nil {
+				cfgErr = fmt.Errorf("unmarshal yaml: %w", err)
+				return
+			}
 
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("unmarshal yaml: %w", err)
-	}
+			// Default values for retry
+			if tmp.Database.Retry.MaxAttempts == 0 {
+				tmp.Database.Retry.MaxAttempts = 10
+			}
+			if tmp.Database.Retry.Delay == 0 {
+				tmp.Database.Retry.Delay = 2 * time.Second
+			}
+			if tmp.Database.Retry.MaxDelay == 0 {
+				tmp.Database.Retry.MaxDelay = 10 * time.Second
+			}
 
-	if cfg.Database.Retry.MaxAttempts == 0 {
-		cfg.Database.Retry.MaxAttempts = 10
-	}
-	if cfg.Database.Retry.Delay == 0 {
-		cfg.Database.Retry.Delay = 2 * time.Second
-	}
-	if cfg.Database.Retry.MaxDelay == 0 {
-		cfg.Database.Retry.MaxDelay = 10 * time.Second
-	}
+			cfgInst = &tmp.Database
+		},
+	)
 
-	return &cfg.Database, nil
+	return cfgInst, cfgErr
 }
